@@ -1,0 +1,181 @@
+@startuml
+hide circle
+
+
+note as N1
+    All attributs are not null.
+end note
+
+package Ressource {
+    class Ressource << abstract >> {
+        Code : varchar {key}
+        Titre : varchar
+        Date_Publication : date
+        Code_Classification : varchar
+        Editeur : varchar
+        Prix : float
+        +est_libre() : boolean
+    }
+
+    class Exemplaire{
+      Etat_exemplaire : Etat
+    }
+
+    class Etat <<emuneration>> {
+        neuf
+        bon
+        abime
+        perdu
+    }
+
+    class Categorie{
+      Genre : varchar {key}
+    }
+
+    class Livre {
+        ISBN : varchar {key}
+        Resume : varchar
+    }
+
+    class Film {
+        Duree : integer
+        Synopsis : varchar
+    }
+
+    class Musique {
+        Duree : integer
+    }
+
+    class Langage{
+        Langue : varchar {key}
+    }
+}
+
+Package Personne {
+    class Personne << abstract >> {
+        Nom : varchar
+        Prenom : varchar
+        Date_de_naissance : date
+    }
+
+    Package Contributeur {
+        class Contributeur  <<abstract>> {
+            Nationalite : varchar
+        }
+
+        class Auteur {
+
+        }
+
+        class Realisateur {
+
+        }
+        class Acteur {
+
+        }
+        class Compositeur {
+
+        }
+        class Interprete {
+
+        }
+
+    }
+
+    Package Utilisateur {
+        class Utilisateur << abstract >> {
+            Login : varchar {key}
+            Password : varchar
+            Adresse : varchar
+            Email : varchar {key}
+        }
+
+        class Membre {
+          +blacklister()
+        }
+
+        class Adherent {
+            NoCard : varchar {key}
+            Telephone : varchar
+            Blacklist : boolean
+            +nombre_sanctions() :integer
+            +nombre_emprunts() : integer
+            +peut_emprunter(): boolean
+            +empunter()
+            +peut_reserver() : boolean
+            +reserver()
+        }
+
+        class Adhesion{
+            Debut : date
+            Fin[0..1] : date
+        }
+    }
+}
+
+class Pret{
+    Date_Pret: timestamp
+    Date_Retour [0..1]: timestamp
+    Etat_Ressource_Debut : Etat
+    Etat_Ressource_Retour[0..1] : Etat
+    +duree_Pret() : integer
+}
+
+class Reservation{
+    Date_Demande : date
+    Date_Disponible[0..1] : date
+    +Res_Depassee()
+}
+
+Package Sanction {
+    class Sanction{
+        Date_Sanction : date
+        Type : Type_sanction
+        Date_Acquittement[0..1] : date
+        Prix[0..1] : float
+}
+
+  class Type_sanction <<enumeration>>{
+    Perte
+    Degradation
+    Retard
+  }
+
+}
+
+' Heritage
+Personne <|-- Contributeur :-XOR-
+Contributeur <|-- Auteur
+Contributeur <|-- Realisateur
+Contributeur <|-- Acteur
+Contributeur <|-- Compositeur
+Contributeur <|-- Interprete
+Ressource <|-- Livre :-XOR-
+Ressource <|-- Film :-XOR-
+Ressource <|-- Musique
+Personne <|-- Utilisateur
+Utilisateur <|-- Membre :-XOR-
+Utilisateur <|-- Adherent
+
+
+
+'association
+Ressource "0..*" -- "1..*" Langage : cree dans \nla langue >
+Ressource "0..*" -- "0..*" Categorie : est du genre >
+Auteur "1..*" -- "0..*" Livre : ecrit >
+Compositeur "1..*" -- "0..*" Musique : compose >
+Interprete "1..*" -- "0..*" Musique : interprete >
+Realisateur "1..*" -- "0..*" Film : dirige >
+Acteur "0..*" -- "0..*" Film : joue >
+
+Adherent "0..*"--"0..*" Exemplaire
+(Exemplaire, Adherent) . Pret
+
+Exemplaire "0..4" -- "0..*" Adherent
+(Exemplaire, Adherent) . Reservation
+
+Adhesion "1..*" --o "1" Adherent : a >
+Exemplaire "   1..*" --* Ressource
+Adherent "0..*" -- "0..*" Membre
+(Adherent, Membre) . Sanction
+@enduml

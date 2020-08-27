@@ -1,0 +1,238 @@
+MLD :  
+
+REMARQUE : Si non précisé, les attributs sont considérés comme NOT NULL.
+
+
+    
+############## REFLEXIONS POUR LES CLASSES RESSOURCES, LANGAGE, CATEGORIE,... ##########
+
+    Ressource (#code:varchar, titre:varchar, date_publication:date, code_classification:varchar, editeur: varchar, prix:float)
+    3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+ 
+ 
+    Langage(#Langue:varchar)
+
+    Cree_dans_la_langue(#Code_ressource=>Ressource, #Langue=>Langage) avec Langue clé
+    // Il peut y avoir plusieurs language pour une ressource, donc on en à fait une classe à part.
+
+    Catégorie(#genre:varchar)
+    Est_du_genre(#Code_Ressource=>Ressource,#catégorie=>Catégorie)   
+
+    ## Lien avec la classe Exemplaire ##
+ 
+    Comme nous avons une composition, le modèle sera le suivant pour la classe Exemplaire:
+
+    Exemplaire(#ID_exemplaire:varchar, #Code_Ressource:varchar, Etat_exemplaire{neuf|bon|abime|perdu})
+    3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+############### REFLEXIONS POUR LES HERITAGES LIES A RESSOURCE ###################
+
+        ### Test héritage par référence ###
+        
+        Ressource (#code:varchar, titre:varchar, date_publication:date, code_classification:varchar, editeur: varchar, prix:float)
+        3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé
+
+        Livre (fille de Ressource) (#Code_Livre=>Ressource(code), ISBN : varchar, Resume : varchar) avec ISBN key
+        3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé
+
+        Film (fille de Ressource) (#Code_Film=>Ressource(code), Duree : int, Synopsis : varchar) 
+        3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+        Musique (fille de Ressource) (#Code_Musique=>Ressource(code), Duree : varchar)
+        3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+        Contraintes complexes:
+        
+        CC1: Intersection(Projection(Livre,Code_Ressource),Projection(Film, Code_Ressource), Projection(Musique, Code_Ressource))=VIDE
+        CC2：Projection(Livre,Code_Ressource) UNION Projection(Film, Code_Ressource) UNION Projection(Musique, Code_Ressource) = Projection(Ressource, code)
+
+
+        ### Test héritage par la fille ###
+        
+
+        Livre (fille de Ressource) (#Code_ressource=>Ressource(code), ISBN : int, Resume : varchar,titre:varchar, date_publication:date, code_classification:varchar, editeur: varchar, prix:float, , etat:{neuf|bon|abime|perdu}) avec ISBN key
+        3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé
+
+        Film (fille de Ressource) (#Code_ressource=>Ressource(code), Longueur : int, Synopsis : varchar,titre:varchar, date_publication:date, code_classification:varchar, editeur: varchar, prix:float, , etat:{neuf|bon|abime|perdu}) 
+        3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+        Musique (fille de Ressource) (#Code_ressource=>Ressource(code), Duree : varchar,titre:varchar, date_publication:date, code_classification:varchar, editeur: varchar, prix:float, , etat:{neuf|bon|abime|perdu})
+        3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+        CC1: Intersection(Projection(Livre,Code_Ressource),Projection(Film, Code_Ressource), Projection(Musique, Code_Ressource))=VIDE
+
+        En effectuant un tel héritage, nous aurions un problème avec les associations entre les ressources et les contributeurs.
+        Cependant, les associations Traduction et Genre devraient être associées aux 3 filles et nous aurions trois fois plus de classes associations qu'attendues si la classe mère n'avait pas été absorbée par les filles.
+        
+        
+        ### Test héritage par la classe mère ###
+
+        Ressource (#code:varchar, titre:varchar, date_publication:date, code_classification:varchar, editeur: varchar, prix:float, , etat:{neuf|bon|abime|perdu}, type:{livre,film,musique}, duree: integer, synopsis:varchar, ISBN: varchar, Resume: varchar)
+
+        Contraintes Simples: 
+        t=livre et ISBN AND Resume NOT NULL AND duree synopsis NULL
+        t=film et Duree AND Synopsis NOT NULL AND resume, ISBN NULL
+        t=musique et DUREE NOT NULL AND Synopsis, resume, ISBN NULL
+
+        Au niveau de chacune des associations entre Auteur, Acteur, Realisateur, Compositeur, Interprète et la classe Ressource, nous devrions vérifier à chaque fois que le code de la ressource correspond au type de ressource attendu dans l'association donnée.
+        Par exemple dans une classe Asso_Acteur entre Ressource et Acteur, nous devrions vérifier que la ressource est bien un film, alors que l'on donne la possibilité à la ressource d'être autre chose qu'un film, par exemple un livre, et pourtant d'être lié à Acteur.
+        
+        
+        ##Conclusion:## Au vu des contradictions apportées par l'héritage par la classe mère et de la complexité des associations liés à l'héritage par la classe fille, nous utiliserons un héritage par référence pour la classe Ressource
+
+############### REFLEXIONS POUR LES HERITAGES LIES AU CONTRIBUTEUR ###################
+
+
+La classe mère Contributeur est abstraite et n’a pas d’association avec d’autres classes. On considère qu’un contributeur peut être auteur et acteur ou acteur et réalisateur (basiquement, il peut être plusieurs type de contributeur), donc ce n’est pas un héritage exclusif.
+
+
+    ### Test héritage par la classe fille ###
+
+    Auteur (#ID_Auteur,Nom : varchar, Prenom : varchar, Date_de_naissance : date, Nationalite: varchar) avec (Nom,Prenom,Date_de_naissance) Key, Nationalite NOT NULL
+    
+    Realisateur (#ID_Realisateur,Nom : varchar, Prenom : varchar, Date_de_naissance : date, Nationalite: varchar) avec (Nom,Prenom,Date_de_naissance) Key, Nationalite NOT NULL
+    
+    Acteur (#ID_Acteur,Nom : varchar, Prenom : varchar, Date_de_naissance : date, Nationalite: varchar) avec (Nom,Prenom,Date_de_naissance) Key, Nationalite NOT NULL
+     
+    Compositeur (#ID_Compositeur,Nom : varchar, Prenom : varchar, Date_de_naissance : date, Nationalite: varchar) avec (Nom,Prenom,Date_de_naissance) Key, Nationalite NOT NULL
+    
+    Interprete (#ID_Interprete,Nom : varchar, Prenom : varchar, Date_de_naissance : date, Nationalite: varchar) avec (Nom,Prenom,Date_de_naissance) Key, Nationalite NOT NULL
+
+   #Contraintes liées à l’héritage:
+
+Pas de contraintes complexes car nous considérons que l’héritage est non exclusif. Donc la contrainte complexe initiale (Intersection puis Projection des clés primaires de chaque classe fille = NULL) n’existe plus.
+Il n'y aura aucune redondance visible dans chacune des tables mais sachant qu'un Réalisateur peut aussi être un Acteur, des redondances seront potentiellement visibles entre les tables.
+
+
+    ### Test héritage non complet par la mère ###
+
+    Réflexion => Plusieurs acteurs peuvent jouer dans un même film ou un livre peut avoir plusieurs auteurs. Or avec cette modélisation, ce critère n’apparaît pas.
+    
+    Contributeur (#ID : varchar, Nom : varchar, Prenom : varchar, Date_de_naissance : date, Nationalite: varchar, type {Auteur, Acteur, Realisateur, Interprete, Compositeur}) avec Nom, Prenom, Date_de_naissance, Nationalite NOT NULL
+    
+    Avec cette modélisation, il sera impossible de distinguer dans la classe association si nous parlons bien d’un auteur, acteur, réalisateur, interprète ou compositeur. L’héritage non complet par la mère ne semble donc pas être adapté.
+    Par la mère, nous aurons un problème de référencement par rapport aux associations de chaque contributeur. En effet, dans ces classes associations, nous aurons accès à l'ID du contributeur et à l'ID de la ressource (qui elle est connue) mais il faudra à chaque fois vérifié que le contributeur a un rôle qui correspond au type de contributeur attendu pour la ressource.
+    (Exemple, dans la table Livre, il faudra toujours vérifié que l'ID renvoyé correspond à l'ID d'un Auteur)
+
+    ### Test Héritage par référence ###
+
+    Contributeur (#ID : varchar, Nom : varchar, Prenom : varchar, Date_de_naissance : date, Nationalité: varchar) avec Nom,Prenom,Date_de_naissance, Nationalite NOT NULL
+    
+    Auteur(#clé=>Contributeur)
+    Acteur(#clé=>Contributeur)
+    Réalisateur(#clé=>Contributeur)
+    Interprète(#clé=>Contributeur)
+    Compositeur(#clé=>Contributeur)
+    
+    CC1:Projection(Contributeur,ID)=Union(Projection(Auteur,clé),Projection(Acteur,Clé),Projection(Réalisateur,Cle),Projection(Interprète,Cle),Projection(Compositeur,clé))
+    Il n'y aura aucune redondance visible dans Contributeur mais sachant qu'un Réalisateur peut aussi être un Acteur, des redondances seront potentiellement visibles entre les tables.
+
+
+ ##Conclusion##: 
+ L’héritage par classe fille ne contient aucune contrainte complexe contrairement à l’héritage par la classe mère et l’héritage par référence. 
+ Cependant, dans le but d'une bonne gestion des modifications, il semblerait opportun de choisir un héritage par référence, car par exemple, si le nom d'un Auteur est mal rentré initialement dans un table,et que celui-ci est aussi Réalisateur et Interpète, il faudrait aller modifier tous les tuples de chacune des tables.
+ Or si nous avions une classe mère qui hérite par référence, il suffirait de modifier une seule fois les tuples associés. 
+ Dans ce but, nous choisissons un hériage par référence.
+
+   ### Relations associations liées à l’héritage ###
+    
+    Asso_Acteurs(#Code_Film=>Film, #ID_Acteur=>Acteur)
+    Asso_Auteurs(#Code_Livre=>Livre, #ID_Auteur=>Auteur)
+    Asso_Realisateur(#Code_Film=>Film, #ID_Realisateur=>Realisateur)
+    Asso_Compositeur(#Code_Musique=>Muisque, #ID_Composition=>Compositeur)
+    Asso_Interprete(#Code_Musique=>Musique, #ID_Interprete=>Interprete)
+
+############### REFLEXIONS POUR LES HERITAGES LIES A PERSONNE ###################
+
+    Personne(Nom:varchar, prenom:varchar, date_de_naissance: date) avec nom,prenom,date_de_naissance NOT NULL
+    On considère qu'il n'y a pas de clé primaire pour la classe mère
+    
+    ## Choix direct justifié ##:
+    Nous avons un héritage exclusif entre Utilisateur et Contributeur. Or, d'après le cours, nous savons que pour un héritage exclusif, l'héritage le plus adapté est l'héritage par classe fille.
+    De plus, la classe Personne est une classe abstraite qui n'est reliée à aucune autre classe par association que ses filles.
+    Nous savons donc que le modèle le plus adapté est l'héritage par classe fille de la manière suivante:
+    
+    Contributeur(#ID_Contributeur: varchar, nom:varchar, prenom:varchar, date_de_naissance: date, nationalite : varchar) avec nom,prenom,date_de_naissance NOT NULL
+    On ajoute ID_Contributeur en clé primaire artificielle
+    
+    Utilisateur(#login: varchar, password:varchar, adresse:varchar, email:varchar, telephone: varchar, nom: varchar, prenom: varchar, date_de_naissance:varchar)
+    avec nom,prenom,date_de_naissance NOT NULL, email KEY, telephone KEY
+    
+    
+############### REFLEXIONS POUR LES HERITAGES LIES A L'UTILISATEUR ###################
+
+    ### Test héritage par référence ###
+    
+    Si nous avions fait un héritage par référence, on aurait eu deux contraintes complexes. Notamment 
+    Intersection(Projection(Membre,Login),Projection(Adherent,Login))= Ø
+    Projection(Utilisateur,Login) =UNION(Projection(Membre,Login),Projection(Adherent,Login)) car Utilisateur est une classe mère abstraite et que les héritages sont exclusifs.
+
+    
+    ### Test héritage par la fille ### 
+    ## Choix direct justifié ## 
+    
+    Pour les classes utilisateur, adhérent et membre, Nous avons fait le choix de faire un héritage par les classes filles. Cet héritage se justifie car c’est celui qui entraîne le moins de contraintes complexes. 
+    En effet, Nous avons remarqué, qu’avec cette modélisations logique il faudrait vérifier que Intersection(Projection(Membre, Login), Projection(Adherent, Login)) = Ø. 
+    De plus cela simplifie la suite car les classes filles ont des associations différentes. 
+    Sachant que l'héritage est exclusif et que la classe mère n'est associée à aucune autre classe que ses filles.
+    Aussi, les deux filles ont des relations entre elles (sanction et blacklist), donc un héritage par la classe mère n’aurait pas été approprié.
+
+    ##Conclusion##: Héritage par la fille tel que:
+    
+    Membre (#login: varchar, adresse:varchar, email:varchar, password:varchar, nom: varchar, prenom:varchar, date_de_naissance:date) 
+    avec nom,prenom,date_de_naissance NOT NULL, KEY, email KEY
+
+    Adherent  (#login: varchar, adresse:varchar, email:varchar, password:varchar, nom: varchar, prenom:varchar, date_de_naissance:date, Telephone : varchar, NoCard : varchar) 
+    avec nom,prenom,date_de_naissance  NOT NULL, email KEY, telephone KEY, NoCard KEY
+
+    
+    Adhesion (#Adherent: varchar, Debut : date, Fin : date, Adherent => Adherent) Fin peut être NULL
+    où Adhésion est une classe en agrégation avec Adhérent. Elle hérite donc de la clé primaire d'Adhérent comme d'une clé étrangère en respectant la règle de la cardianlité 1:N (d'où la relation)
+    
+    Contrainte à vérifier : (Projection(Adhesion, id_adherent) = Projection(Adherent, login))
+    
+############# REFLEXIONS LIEES AUX CLASSES D'ASSOCIATIONS SANCTIONS ###############
+    
+Nous avons la relation de Sanction et de Blacklist entre Adherent et membre
+
+    Sanction(#Id : integer, Adherent=>Adherent, Membre => MEMBRE, Date_Sanction : date, type :{Perte | Degradation | Remboursement}, Date_Acquittement : date, prix : float)
+        Contraintes simples:
+        Si type = Perte ou degradation, prix is not NULL.
+        Notons : 
+        Date_Acquittement peut être NULL.
+    
+############ REFLEXIONS LIEES A PRET ET RESERVATION ##############
+
+	On a les classes concernées suivantes : 
+	
+    Exemplaire(#Code:varchar, #Code_Ressource=>Ressource:varchar, Etat_exemplaire{neuf|bon|abime|perdu})
+    3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+    
+    Adherent  (#ID_Personne: varchar, adresse:varchar, email:varchar, password:varchar, nom: varchar, prenom:varchar, date_de_naissance:date, Telephone : varchar, NoCard : varchar, blacklist: boolean) 
+    avec (nom,prenom,date_de_naissance) KEY, login KEY, email KEY, telephone KEY, NoCard KEY
+
+    On retrouve l'association Prêt entre Adhérent et Exemplaire :
+    
+    Pret (#Adherent=>Adherent, #Code_exemplaire=>Exemplaire(Code), #Code_Ressource=>Ressource(Code), Time_Pret : date, Time_retour: date) 
+    (Retour_Pret, Etat_Ressource_Retour peuvent être NULL)
+
+    Reservation (#Adherentr=>Adherent, #Code_exemplaire=>Exemplaire(Code), #Code_ressource=>Ressource(Code) , Time_Demande : date, Time_Disponible : date) 
+    (Date_Disponible peut être NULL)
+
+############ CONTRAINTES SUR LES ASSOCIATIONS ##############
+    Ressource 0..N -- 1..N Langage
+        Projection(Ressource,code) = Projection(Cree_dans_la_langue,Code_ressource)
+    Exemplaire "1..N" -composition- "1" Ressource
+        Exemplaire.Code_ressource NOT NULL
+        Projection(Ressource,code) = Projection(Exemplaire,Code_ressource)
+    Auteur "1..N" -- "0..N" Livre
+        Projection(Livre,Code_ressource) = Projection(Asso_Auteurs,Code_Livre)
+    Compositeur "1..N" -- "0..N" Musique
+        Projection(Musique,Code_ressource) = Projection(Asso_Compositeurs,Code_Musique)
+    Interprete "1..N" -- "0..N" Musique
+        Projection(Musique,Code_ressource) = Projection(Asso_Interpretes,Code_Musique)
+    Realisateur "1..N" -- "0..N" Film
+        Projection(Film,Code_ressource) = Projection(Realisateurs,Code_Film)
+    Adhesion "1..N" agrégation "1" Adherent
+        Adhesion.Adherent NOT NULL
+        Projection(Adherent,id) = Projection(Adhesion,Adherent)
