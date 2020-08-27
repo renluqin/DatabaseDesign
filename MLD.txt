@@ -1,0 +1,121 @@
+MLD :  
+
+REMARQUE : Si non précisé, les attributs sont considérés comme NOT NULL.
+
+###Héritage###
+1.Person - EmployeeLE, LabMember
+Bien que la classe Person soit une classe abstraite, mais elle et ses classes filles sont tous deux liées à d'autres classes,
+j'ai choisi ici l'héritage par référence.
+Remarque : Les membres internes du projet appartient au laboratoire (<=>LabMember), et les membres externes appartient aux autres entités juridiques (<=>EmployeeLE).
+
+2. LabMember - TeacherResearcher, ResearchEngineer et Doctor
+Bien que la classe mère LabMember soit une classe abstraite, cette classe abstraite est associée à d'autres classes. 
+Pour éviter des contraintes complexes, j'ai choisi l'héritage par mère pour représenter LabMember et ses trois classes filles: TeacherResearcher, ResearchEngineer et Doctor.
+
+3. EmployeeLE - EmployeeContact
+Étant donné que la classe mère et la classe fille sont liées à d'autres classes, 
+et qu'il n'y a pas de classe abstraite ici, j'ai choisi d'utiliser l'héritage par référence.
+
+4. LegalEntity - Laboratory, Company, Country, Region, City
+Bien que LegalEntity soit une classe abstraite, elle a de nombreuses associations avec d'autres classes, 
+et lui et ses classes filles sont héritage complet, j'ai donc choisi d'utiliser l'héritage par mère.
+Remarque : L'une de ses filles -- Laboratory, a une association avec LabMember, 
+alors je vais faire attention à cela lors de la phase de SQL CREATE.
+
+5. Budget - OperatingBudget, MaterialBudget
+Bien que Budget soit une classe abstraite, il est lié à d'autres classes et ses deux classes filles sont 
+complètement héritées et ne sont pas liées à d'autres classes, j'ai donc choisi l'héritage par mère.
+
+6. Expense - OperatingExpense, MaterialExpense
+Bien que Expense soit une classe abstraite, il est lié à d'autres classes et ses deux classes filles sont 
+complètement héritées et ne sont pas liées à d'autres classes, j'ai donc choisi l'héritage par mère.
+
+###Package Person###
+
+Person(#PID : integer, Name : json, Email : json, legalEntity=>LegalEntity)
+
+Contraintes complexes:
+    - projection(LegalEntity,Code) = projection(Person, legalEntity)
+
+LabMember(#PID=>Person, Type : {TeacherResearcher|ResearchEngineer|Doctor}, Research_time_quota : integer, Edu_establishment : varchar, Speciality : varchar, Thesis_start_date : date, Thesis_end_date : date, Thesis_subject : varchar)
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+vTeacherResearcher = projection(restriction(LabMember, Type = TeacherResearcher),Research_time_quota,Edu_establishment)
+vResearchEngineer = projection(restriction(LabMember, Type = ResearchEngineer),Speciality)
+vDoctor = projection(restriction(LabMember, Type = Doctor),Thesis_start_date,Thesis_end_date,Thesis_subject)
+
+Contraintes simples:
+    - Type NOT NULL
+    - Type = TeacherResearcher AND Research_time_quota NOT NULL AND Edu_establishment NOT NULL AND  Speciality NULL AND Thesis_start_date NULL AND Thesis_end_date NULL AND Thesis_subject NULL
+    - Type = ResearchEngineer AND Research_time_quota NULL AND Edu_establishment NULL AND  Speciality NOT NULL AND Thesis_start_date NULL AND Thesis_end_date NULL AND Thesis_subject NULL
+    - Type = Doctor AND Research_time_quota NULL AND Edu_establishment NULL AND  Speciality NULL AND Thesis_start_date NOT NULL AND Thesis_subject NOT NULL
+
+EmployeeLE(#PID=>Person, Telephone : varchar)
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+EmployeeContact(#PID=>EmployeeLE, Title : varchar)
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+Contraintes complexes:
+    - R1 = projection(Person,PID) 
+    - R2 = projection(LabMember, PID) UNION projection(EmployeeLE, PID)
+    - vCheckMember = difference(R1, R2) devrait être nul
+
+###Package Organization###
+
+LegalEntity(#Code : varchar, Name : varchar, Start_date : date, End_date : date, Type : {company|country|region|city|laboratory}, contact=>EmployeeContact) 
+avec End_date peut être nul et contact key
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+Organization(#Code : varchar, Name : varchar, Date_Creation : date, Duration : integer) 
+avec Duration peut être nul
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+LegalEntityOrganization(#legalEntity=>LegalEntity, #organization=>Organization)
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+Contraintes complexes :
+    - R1 = Projection(Organization, Code) 
+    - R2 = Projection(LegalEntityOrganization, organization)
+    - vCheckLegalEntityOrganization = difference(R1, R2) devrait être nul
+
+###Package Project###
+
+Call(#CID : integer, Date_Launch : date, Date_Finish : date, Theme : varchar, Description : varchar, Committee : varchar, organization=>Organization)
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+Project(#PID : integer, Start_date : date, End_date : date)
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+Proposal(#call=>Call, #PID : integer, Date_submit : date, Date_response : date, Response : {refusal|acceptance}, project=>Project) 
+avec Date_response peut être nul et Response peut être nul et project unique et peut être nul
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+Budget(#call=>Proposal(call), #proposal=>Proposal(PID), #BID : integer, Amount : integer, Object : varchar, Type : {operating|Material})
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+vOperatingBudget = restriction(Budget, Type = operating)
+vMaterialBudget = restriction(Budget, Type = material)
+
+Label(#Name : varchar, legalEntity=>LegalEntity)
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+ProposalLabel(#call=>Proposal(call), #proposal=>Proposal(PID), #label=>Label)
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+ProposalLabMember(#call=>Proposal(call), #proposal=>Proposal(PID), #labMember=>LabMember)
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+Contraintes complexes :
+    - R1 = Projection(Proposal, (call,PID)) 
+    - R2 = Projection(ProposalLabMember, (call,proposal))
+    - vCheckProposalLabMember = difference(R1, R2) devrait être nul
+
+###Classe d'association###
+
+Expense(#project=>Project, #demander=>Person, #validator=>Person, Date : date, Amount : integer, Type : operating|material})
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+ProjectMember(#project=>Project, #member=>Person, Position : varchar)
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
+###Normalisation###
+3NF: Clé primaire unique. Aucun attribut non clé détermine un autre attribut non clé.
+
